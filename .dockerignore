@@ -1,0 +1,5 @@
+build/
+temp_input.cpp
+__pycache__/
+.git/
+.env

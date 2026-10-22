@@ -6,6 +6,8 @@
 #include "Evaluator.h"
 #include "EnvLoader.h"
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <iomanip>
 #include <cstdlib>
 
@@ -41,16 +43,11 @@ std::string tokenTypeToString(TokenType type) {
     }
 }
 
-void runCompilerPipeline(const std::string& sourceCode, const std::string& testName) {
-    std::cout << "========================================\n";
-    std::cout << "  RUNNING PIPELINE: " << testName << "\n";
-    std::cout << "========================================\n\n";
-
+void runCompilerPipeline(const std::string& sourceCode) {
     DiagnosticEngine diagnostics;
 
     // STAGE 1: LEXICAL ANALYSIS
-    std::cout << "[STAGE 1] Lexical Analysis (Token Stream)\n";
-    std::cout << "----------------------------------------\n";
+    std::cout << "[STAGE 1] Lexical Analysis\n----------------------------------------\n";
     Lexer lexer(sourceCode);
     std::vector<Token> tokens = lexer.tokenizeAll();
 
@@ -59,16 +56,11 @@ void runCompilerPipeline(const std::string& sourceCode, const std::string& testN
             diagnostics.report(DiagnosticLevel::ERROR, "Lexer", tok.line, tok.column,
                                "Unrecognized token '" + tok.value + "'", sourceCode);
         }
-        std::cout << "Line " << std::setw(2) << tok.line 
-                  << ", Col " << std::setw(2) << tok.column 
-                  << " | " << std::setw(15) << std::left << tokenTypeToString(tok.type)
-                  << " | Value: \"" << tok.value << "\"\n";
     }
-    std::cout << "\n";
+    std::cout << "Tokenization complete (" << tokens.size() << " tokens).\n\n";
 
     // STAGE 2: PARSING & AST GENERATION
-    std::cout << "[STAGE 2] Parsing & Abstract Syntax Tree (AST)\n";
-    std::cout << "----------------------------------------\n";
+    std::cout << "[STAGE 2] Parsing & AST Generation\n----------------------------------------\n";
     Parser parser(tokens);
     std::unique_ptr<ProgramNode> ast = nullptr;
     try {
@@ -80,8 +72,7 @@ void runCompilerPipeline(const std::string& sourceCode, const std::string& testN
     std::cout << "\n";
 
     // STAGE 3: SEMANTIC ANALYSIS
-    std::cout << "[STAGE 3] Semantic Analysis & Symbol Table\n";
-    std::cout << "----------------------------------------\n";
+    std::cout << "[STAGE 3] Semantic Analysis & Symbol Table\n----------------------------------------\n";
     if (ast) {
         SemanticAnalyzer analyzer;
         analyzer.analyze(*ast);
@@ -94,36 +85,33 @@ void runCompilerPipeline(const std::string& sourceCode, const std::string& testN
     std::cout << "\n";
 
     // STAGE 4: DIAGNOSTICS & LIVE AI BRIDGE
-    std::cout << "[STAGE 4] Diagnostics & Live Gemini AI Diagnosis\n";
-    std::cout << "----------------------------------------\n";
+    std::cout << "[STAGE 4] Diagnostics & Gemini AI Integration\n----------------------------------------\n";
     if (diagnostics.hasErrors()) {
         diagnostics.printDiagnostics();
         
         std::string promptPayload = diagnostics.generateAIPrompt();
-        std::cout << "--- SENDING PROMPT TO GEMINI API ---\n";
-
         const char* envApiKey = std::getenv("GEMINI_API_KEY");
         std::string apiKey = envApiKey ? std::string(envApiKey) : "";
 
-        if (apiKey.empty()) {
-            std::cout << "[Note] GEMINI_API_KEY not set in environment or .env.local\n";
-            std::cout << "Generated Prompt Payload:\n" << promptPayload << "\n";
+        if (apiKey.empty() || apiKey == "your_actual_gemini_api_key_here") {
+            std::cout << "[Warning] Valid GEMINI_API_KEY missing in .env.local\n";
+            std::cout << "Prompt Payload Ready:\n" << promptPayload << "\n";
         } else {
+            std::cout << "--> Contacting Gemini API for AI Diagnostic Analysis...\n";
             GeminiClient client(apiKey);
             std::string aiResponse = client.fetchDiagnosticAnalysis(promptPayload);
-            std::cout << "\n--- GEMINI AI DIAGNOSTIC ADVICE ---\n";
-            std::cout << aiResponse << "\n\n";
+            std::cout << "\n=== GEMINI AI DIAGNOSTIC ADVICE ===\n";
+            std::cout << aiResponse << "\n===================================\n\n";
         }
     } else {
-        std::cout << "No errors detected.\n\n";
+        std::cout << "No syntax/semantic errors detected.\n\n";
 
-        // STAGE 5: EXECUTION & RUNTIME EVALUATION
-        std::cout << "[STAGE 5] AST Execution & Runtime Environment\n";
-        std::cout << "----------------------------------------\n";
+        // STAGE 5: EXECUTION
+        std::cout << "[STAGE 5] Runtime Execution\n----------------------------------------\n";
         try {
             Evaluator evaluator;
             evaluator.execute(*ast);
-            std::cout << "Execution Output / Final State:\n";
+            std::cout << "Final Variable State:\n";
             evaluator.printRuntimeState();
         } catch (const std::exception& e) {
             std::cout << "[Runtime Error] " << e.what() << "\n";
@@ -132,18 +120,34 @@ void runCompilerPipeline(const std::string& sourceCode, const std::string& testN
     }
 }
 
-int main() {
+int main(int argc, char* argv[]) {
     loadEnv(".env.local");
 
-    std::string executionSource = 
-        "int score = 100 + 50 * 2;\n"
-        "int counter = 0;\n"
-        "while (counter < 3) {\n"
-        "    counter = counter + 1;\n"
-        "    score = score - 10;\n"
-        "}\n";
+    std::string sourceCode;
 
-    runCompilerPipeline(executionSource, "Full Execution & Evaluation Test");
+    if (argc > 1) {
+        // Read code from input file argument
+        std::ifstream file(argv[1]);
+        if (!file.is_open()) {
+            std::cerr << "Error: Could not open file " << argv[1] << "\n";
+            return 1;
+        }
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        sourceCode = buffer.str();
+    } else {
+        std::cout << "Usage: ./compiler <source_file.cpp>\n";
+        std::cout << "Or paste your code below (press Ctrl+D on Unix when finished):\n";
+        std::cout << "----------------------------------------\n";
+        std::string line;
+        while (std::getline(std::cin, line)) {
+            sourceCode += line + "\n";
+        }
+    }
+
+    if (!sourceCode.empty()) {
+        runCompilerPipeline(sourceCode);
+    }
 
     return 0;
 }

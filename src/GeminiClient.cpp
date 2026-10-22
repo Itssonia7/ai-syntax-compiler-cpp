@@ -2,6 +2,7 @@
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
 #include <iostream>
+#include <vector>
 
 using json = nlohmann::json;
 
@@ -18,15 +19,13 @@ std::string GeminiClient::fetchDiagnosticAnalysis(const std::string& promptPaylo
         return "[Gemini API Error] API key is missing. Please set the GEMINI_API_KEY environment variable.";
     }
 
-    CURL* curl = curl_easy_init();
-    if (!curl) {
-        return "[Gemini API Error] Failed to initialize CURL.";
-    }
+    // List of models in order of preference (Primary -> Fallback)
+    std::vector<std::string> modelCandidates = {
+        "gemini-3.8-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3.1-flash-lite"
+    };
 
-    std::string url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey;
-    std::string responseBuffer;
-
-    // Construct JSON Payload
     json requestBody = {
         {"contents", json::array({
             {
@@ -36,44 +35,54 @@ std::string GeminiClient::fetchDiagnosticAnalysis(const std::string& promptPaylo
             }
         })}
     };
-
     std::string jsonStr = requestBody.dump();
 
-    struct curl_slist* headers = nullptr;
-    headers = curl_slist_append(headers, "Content-Type: application/json");
+    for (const auto& model : modelCandidates) {
+        CURL* curl = curl_easy_init();
+        if (!curl) continue;
 
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonStr.c_str());
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBuffer);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
+        std::string url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey;
+        std::string responseBuffer;
 
-    CURLcode res = curl_easy_perform(curl);
-    curl_slist_free_all(headers);
-    curl_easy_cleanup(curl);
+        struct curl_slist* headers = nullptr;
+        headers = curl_slist_append(headers, "Content-Type: application/json");
 
-    if (res != CURLE_OK) {
-        return std::string("[Gemini API Error] Network request failed: ") + curl_easy_strerror(res);
-    }
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonStr.c_str());
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBuffer);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
 
-    try {
-        json responseJson = json::parse(responseBuffer);
-        
-        if (responseJson.contains("error")) {
-            return "[Gemini API Error] " + responseJson["error"]["message"].get<std::string>();
-        }
+        CURLcode res = curl_easy_perform(curl);
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
 
-        if (responseJson.contains("candidates") && 
-            !responseJson["candidates"].empty() &&
-            responseJson["candidates"][0].contains("content") &&
-            responseJson["candidates"][0]["content"].contains("parts")) {
+        if (res != CURLE_OK) continue;
+
+        try {
+            json responseJson = json::parse(responseBuffer);
             
-            return responseJson["candidates"][0]["content"]["parts"][0]["text"].get<std::string>();
+            if (responseJson.contains("error")) {
+                std::string errMessage = responseJson["error"]["message"].get<std::string>();
+                // If high demand 503, try next candidate model
+                if (errMessage.find("high demand") != std::string::npos || responseJson["error"]["code"] == 503) {
+                    continue;
+                }
+                return "[Gemini API Error] (" + model + "): " + errMessage;
+            }
+
+            if (responseJson.contains("candidates") && 
+                !responseJson["candidates"].empty() &&
+                responseJson["candidates"][0].contains("content") &&
+                responseJson["candidates"][0]["content"].contains("parts")) {
+                
+                return "[" + model + " Advice]\n" + responseJson["candidates"][0]["content"]["parts"][0]["text"].get<std::string>();
+            }
+        } catch (const std::exception& e) {
+            continue;
         }
-    } catch (const std::exception& e) {
-        return std::string("[Gemini API Error] Failed to parse JSON response: ") + e.what();
     }
 
-    return "[Gemini API Error] Unexpected response format from Gemini API.";
+    return "[Gemini API Error] All candidate models (3.8-flash, 3.5-flash-lite) are currently overloaded on the free tier. Please try again in 1 minute.";
 }
