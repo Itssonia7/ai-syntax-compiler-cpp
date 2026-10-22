@@ -1,5 +1,6 @@
 #include "Lexer.h"
 #include "Parser.h"
+#include "SemanticAnalyzer.h"
 #include <iostream>
 #include <iomanip>
 
@@ -48,6 +49,26 @@ int main() {
     std::unique_ptr<ProgramNode> ast = parser.parseProgram();
     if (ast) {
         ast->print();
+    }
+    std::cout << "\n";
+
+    // STAGE 3: SEMANTIC ANALYSIS & SYMBOL TABLE
+    std::cout << "[STAGE 3] Semantic Analysis & Symbol Table\n";
+    std::cout << "----------------------------------------\n";
+    
+    SemanticAnalyzer analyzer;
+    bool success = analyzer.analyze(*ast);
+
+    std::cout << "Symbol Table:\n";
+    analyzer.getSymbolTable().print();
+
+    if (!success) {
+        std::cout << "\nSemantic Errors Encountered:\n";
+        for (const auto& err : analyzer.getErrors()) {
+            std::cout << " - " << err << "\n";
+        }
+    } else {
+        std::cout << "\nSemantic Analysis Passed: 0 Errors Found.\n";
     }
     std::cout << "\n";
 
