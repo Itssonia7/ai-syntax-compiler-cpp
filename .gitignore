@@ -1,18 +1,10 @@
-# Build directories
-build/
-cmake-build-*/
-bin/
-obj/
+# Environment files (Secrets)
+.env
+.env.local
+.env.*
 
-# Compiled outputs
+# Build artifacts
+build/
+bin/
 *.o
 *.a
-*.so
-*.dylib
-*.exe
-*.out
-
-# IDE and OS specific files
-.vscode/
-.idea/
-.DS_Store

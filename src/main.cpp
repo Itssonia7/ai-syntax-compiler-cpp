@@ -3,6 +3,7 @@
 #include "SemanticAnalyzer.h"
 #include "DiagnosticEngine.h"
 #include "GeminiClient.h"
+#include "EnvLoader.h"
 #include <iostream>
 #include <iomanip>
 #include <cstdlib>
@@ -87,8 +88,7 @@ void runCompilerPipeline(const std::string& sourceCode, const std::string& testN
         std::string apiKey = envApiKey ? std::string(envApiKey) : "";
 
         if (apiKey.empty()) {
-            std::cout << "[Note] GEMINI_API_KEY environment variable not set.\n";
-            std::cout << "Export your key using: export GEMINI_API_KEY=\"your_key_here\"\n\n";
+            std::cout << "[Note] GEMINI_API_KEY not found in environment or .env.local\n";
             std::cout << "Generated Prompt Payload:\n" << promptPayload << "\n";
         } else {
             GeminiClient client(apiKey);
@@ -102,6 +102,9 @@ void runCompilerPipeline(const std::string& sourceCode, const std::string& testN
 }
 
 int main() {
+    // Automatically load .env.local at startup
+    loadEnv(".env.local");
+
     std::string errorSource = "int score = 100;\nscore = \"invalid_type_assignment\";";
     runCompilerPipeline(errorSource, "Semantic Error Live AI Diagnostic Test");
 
