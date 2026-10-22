@@ -21,6 +21,10 @@ private:
     void visitNode(const ASTNode* node);
     void visitVarDecl(const VarDeclNode* node);
     void visitAssignment(const AssignmentNode* node);
+    void visitIfStmt(const IfStmtNode* node);
+    void visitWhileStmt(const WhileStmtNode* node);
+    void visitBlock(const BlockStmtNode* node);
+    
     std::string inferType(const ExprNode* expr);
 };
 

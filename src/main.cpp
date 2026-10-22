@@ -13,11 +13,28 @@ std::string tokenTypeToString(TokenType type) {
         case TokenType::KEYWORD_INT:     return "KEYWORD_INT";
         case TokenType::KEYWORD_STRING:  return "KEYWORD_STRING";
         case TokenType::KEYWORD_BOOLEAN: return "KEYWORD_BOOLEAN";
+        case TokenType::KEYWORD_IF:      return "KEYWORD_IF";
+        case TokenType::KEYWORD_ELSE:    return "KEYWORD_ELSE";
+        case TokenType::KEYWORD_WHILE:   return "KEYWORD_WHILE";
         case TokenType::IDENTIFIER:      return "IDENTIFIER";
         case TokenType::INT_LITERAL:     return "INT_LITERAL";
         case TokenType::STRING_LITERAL:  return "STRING_LITERAL";
         case TokenType::ASSIGN:          return "ASSIGN";
+        case TokenType::PLUS:            return "PLUS";
+        case TokenType::MINUS:           return "MINUS";
+        case TokenType::STAR:            return "STAR";
+        case TokenType::SLASH:           return "SLASH";
+        case TokenType::EQUAL_EQUAL:     return "EQUAL_EQUAL";
+        case TokenType::NOT_EQUAL:       return "NOT_EQUAL";
+        case TokenType::LESS:            return "LESS";
+        case TokenType::GREATER:         return "GREATER";
+        case TokenType::LESS_EQUAL:      return "LESS_EQUAL";
+        case TokenType::GREATER_EQUAL:   return "GREATER_EQUAL";
         case TokenType::SEMICOLON:       return "SEMICOLON";
+        case TokenType::LPAREN:          return "LPAREN";
+        case TokenType::RPAREN:          return "RPAREN";
+        case TokenType::LBRACE:          return "LBRACE";
+        case TokenType::RBRACE:          return "RBRACE";
         case TokenType::END_OF_FILE:     return "END_OF_FILE";
         default:                         return "UNKNOWN";
     }
@@ -88,7 +105,7 @@ void runCompilerPipeline(const std::string& sourceCode, const std::string& testN
         std::string apiKey = envApiKey ? std::string(envApiKey) : "";
 
         if (apiKey.empty()) {
-            std::cout << "[Note] GEMINI_API_KEY not found in environment or .env.local\n";
+            std::cout << "[Note] GEMINI_API_KEY not set in environment or .env.local\n";
             std::cout << "Generated Prompt Payload:\n" << promptPayload << "\n";
         } else {
             GeminiClient client(apiKey);
@@ -102,11 +119,15 @@ void runCompilerPipeline(const std::string& sourceCode, const std::string& testN
 }
 
 int main() {
-    // Automatically load .env.local at startup
     loadEnv(".env.local");
 
-    std::string errorSource = "int score = 100;\nscore = \"invalid_type_assignment\";";
-    runCompilerPipeline(errorSource, "Semantic Error Live AI Diagnostic Test");
+    std::string expandedSource = 
+        "int score = 100 + 50 * 2;\n"
+        "if (score > 150) {\n"
+        "    score = score - 10;\n"
+        "}\n";
+
+    runCompilerPipeline(expandedSource, "Grammar Expansion & Control Flow Test");
 
     return 0;
 }

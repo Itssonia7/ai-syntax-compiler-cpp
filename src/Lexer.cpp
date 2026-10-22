@@ -39,6 +39,9 @@ Token Lexer::readIdentifierOrKeyword() {
     if (value == "int") type = TokenType::KEYWORD_INT;
     else if (value == "string") type = TokenType::KEYWORD_STRING;
     else if (value == "boolean") type = TokenType::KEYWORD_BOOLEAN;
+    else if (value == "if") type = TokenType::KEYWORD_IF;
+    else if (value == "else") type = TokenType::KEYWORD_ELSE;
+    else if (value == "while") type = TokenType::KEYWORD_WHILE;
 
     return Token{type, value, line, startCol};
 }
@@ -92,15 +95,53 @@ Token Lexer::nextToken() {
         return readString();
     }
 
+    // Two-character operators
     if (c == '=') {
         advance();
+        if (peek() == '=') {
+            advance();
+            return Token{TokenType::EQUAL_EQUAL, "==", line, startCol};
+        }
         return Token{TokenType::ASSIGN, "=", line, startCol};
     }
 
-    if (c == ';') {
+    if (c == '!') {
         advance();
-        return Token{TokenType::SEMICOLON, ";", line, startCol};
+        if (peek() == '=') {
+            advance();
+            return Token{TokenType::NOT_EQUAL, "!=", line, startCol};
+        }
+        return Token{TokenType::UNKNOWN, "!", line, startCol};
     }
+
+    if (c == '<') {
+        advance();
+        if (peek() == '=') {
+            advance();
+            return Token{TokenType::LESS_EQUAL, "<=", line, startCol};
+        }
+        return Token{TokenType::LESS, "<", line, startCol};
+    }
+
+    if (c == '>') {
+        advance();
+        if (peek() == '=') {
+            advance();
+            return Token{TokenType::GREATER_EQUAL, ">=", line, startCol};
+        }
+        return Token{TokenType::GREATER, ">", line, startCol};
+    }
+
+    // Single-character tokens
+    if (c == '+') { advance(); return Token{TokenType::PLUS, "+", line, startCol}; }
+    if (c == '-') { advance(); return Token{TokenType::MINUS, "-", line, startCol}; }
+    if (c == '*') { advance(); return Token{TokenType::STAR, "*", line, startCol}; }
+    if (c == '/') { advance(); return Token{TokenType::SLASH, "/", line, startCol}; }
+    if (c == ';') { advance(); return Token{TokenType::SEMICOLON, ";", line, startCol}; }
+    if (c == '(') { advance(); return Token{TokenType::LPAREN, "(", line, startCol}; }
+    if (c == ')') { advance(); return Token{TokenType::RPAREN, ")", line, startCol}; }
+    if (c == '{') { advance(); return Token{TokenType::LBRACE, "{", line, startCol}; }
+    if (c == '}') { advance(); return Token{TokenType::RBRACE, "}", line, startCol}; }
 
     // Unknown token
     std::string unknownVal(1, advance());
@@ -114,6 +155,6 @@ std::vector<Token> Lexer::tokenizeAll() {
         tokens.push_back(tok);
         tok = nextToken();
     }
-    tokens.push_back(tok); // Append END_OF_FILE token
+    tokens.push_back(tok);
     return tokens;
 }

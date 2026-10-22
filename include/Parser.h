@@ -23,7 +23,17 @@ private:
     std::unique_ptr<ASTNode> parseStatement();
     std::unique_ptr<VarDeclNode> parseVarDecl();
     std::unique_ptr<AssignmentNode> parseAssignment();
+    std::unique_ptr<IfStmtNode> parseIfStmt();
+    std::unique_ptr<WhileStmtNode> parseWhileStmt();
+    std::unique_ptr<BlockStmtNode> parseBlock();
+
+    // Expression Parsing Hierarchy (Precedence Levels)
     std::unique_ptr<ExprNode> parseExpression();
+    std::unique_ptr<ExprNode> parseEquality();
+    std::unique_ptr<ExprNode> parseComparison();
+    std::unique_ptr<ExprNode> parseTerm();
+    std::unique_ptr<ExprNode> parseFactor();
+    std::unique_ptr<ExprNode> parsePrimary();
 };
 
 #endif // PARSER_H
