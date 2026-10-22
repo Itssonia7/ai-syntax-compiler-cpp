@@ -16,6 +16,7 @@ add_executable(compiler
     src/SemanticAnalyzer.cpp 
     src/DiagnosticEngine.cpp
     src/GeminiClient.cpp
+    src/Evaluator.cpp
 )
 
 target_link_libraries(compiler PRIVATE CURL::libcurl nlohmann_json::nlohmann_json)

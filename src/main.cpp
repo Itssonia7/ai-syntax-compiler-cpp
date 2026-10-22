@@ -3,6 +3,7 @@
 #include "SemanticAnalyzer.h"
 #include "DiagnosticEngine.h"
 #include "GeminiClient.h"
+#include "Evaluator.h"
 #include "EnvLoader.h"
 #include <iostream>
 #include <iomanip>
@@ -114,20 +115,35 @@ void runCompilerPipeline(const std::string& sourceCode, const std::string& testN
             std::cout << aiResponse << "\n\n";
         }
     } else {
-        std::cout << "No errors detected. Compiler pipeline completed successfully.\n\n";
+        std::cout << "No errors detected.\n\n";
+
+        // STAGE 5: EXECUTION & RUNTIME EVALUATION
+        std::cout << "[STAGE 5] AST Execution & Runtime Environment\n";
+        std::cout << "----------------------------------------\n";
+        try {
+            Evaluator evaluator;
+            evaluator.execute(*ast);
+            std::cout << "Execution Output / Final State:\n";
+            evaluator.printRuntimeState();
+        } catch (const std::exception& e) {
+            std::cout << "[Runtime Error] " << e.what() << "\n";
+        }
+        std::cout << "\n";
     }
 }
 
 int main() {
     loadEnv(".env.local");
 
-    std::string expandedSource = 
+    std::string executionSource = 
         "int score = 100 + 50 * 2;\n"
-        "if (score > 150) {\n"
+        "int counter = 0;\n"
+        "while (counter < 3) {\n"
+        "    counter = counter + 1;\n"
         "    score = score - 10;\n"
         "}\n";
 
-    runCompilerPipeline(expandedSource, "Grammar Expansion & Control Flow Test");
+    runCompilerPipeline(executionSource, "Full Execution & Evaluation Test");
 
     return 0;
 }
