@@ -1,4 +1,5 @@
 #include "Lexer.h"
+#include "Parser.h"
 #include <iostream>
 #include <iomanip>
 
@@ -36,6 +37,17 @@ int main() {
                   << ", Col " << std::setw(2) << tok.column 
                   << " | " << std::setw(15) << std::left << tokenTypeToString(tok.type)
                   << " | Value: \"" << tok.value << "\"\n";
+    }
+    std::cout << "\n";
+
+    // STAGE 2: PARSING & AST GENERATION
+    std::cout << "[STAGE 2] Parsing & Abstract Syntax Tree (AST)\n";
+    std::cout << "----------------------------------------\n";
+    
+    Parser parser(tokens);
+    std::unique_ptr<ProgramNode> ast = parser.parseProgram();
+    if (ast) {
+        ast->print();
     }
     std::cout << "\n";
 

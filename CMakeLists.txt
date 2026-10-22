@@ -6,4 +6,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(include)
 
-add_executable(compiler src/main.cpp src/Lexer.cpp)
+add_executable(compiler src/main.cpp src/Lexer.cpp src/Parser.cpp)
