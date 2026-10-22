@@ -2,8 +2,10 @@
 #include "Parser.h"
 #include "SemanticAnalyzer.h"
 #include "DiagnosticEngine.h"
+#include "GeminiClient.h"
 #include <iostream>
 #include <iomanip>
+#include <cstdlib>
 
 std::string tokenTypeToString(TokenType type) {
     switch (type) {
@@ -72,24 +74,36 @@ void runCompilerPipeline(const std::string& sourceCode, const std::string& testN
     }
     std::cout << "\n";
 
-    // STAGE 4: DIAGNOSTICS & AI BRIDGE
-    std::cout << "[STAGE 4] Diagnostics & LLM Prompt Payload\n";
+    // STAGE 4: DIAGNOSTICS & LIVE AI BRIDGE
+    std::cout << "[STAGE 4] Diagnostics & Live Gemini AI Diagnosis\n";
     std::cout << "----------------------------------------\n";
     if (diagnostics.hasErrors()) {
         diagnostics.printDiagnostics();
-        std::cout << "--- GENERATED AI DIAGNOSTIC PROMPT ---\n";
-        std::cout << diagnostics.generateAIPrompt() << "\n";
+        
+        std::string promptPayload = diagnostics.generateAIPrompt();
+        std::cout << "--- SENDING PROMPT TO GEMINI API ---\n";
+
+        const char* envApiKey = std::getenv("GEMINI_API_KEY");
+        std::string apiKey = envApiKey ? std::string(envApiKey) : "";
+
+        if (apiKey.empty()) {
+            std::cout << "[Note] GEMINI_API_KEY environment variable not set.\n";
+            std::cout << "Export your key using: export GEMINI_API_KEY=\"your_key_here\"\n\n";
+            std::cout << "Generated Prompt Payload:\n" << promptPayload << "\n";
+        } else {
+            GeminiClient client(apiKey);
+            std::string aiResponse = client.fetchDiagnosticAnalysis(promptPayload);
+            std::cout << "\n--- GEMINI AI DIAGNOSTIC ADVICE ---\n";
+            std::cout << aiResponse << "\n\n";
+        }
     } else {
         std::cout << "No errors detected. Compiler pipeline completed successfully.\n\n";
     }
 }
 
 int main() {
-    std::string validSource = "int score = 100;\nstring name = \"compiler\";";
     std::string errorSource = "int score = 100;\nscore = \"invalid_type_assignment\";";
-
-    runCompilerPipeline(validSource, "Valid Source Test");
-    runCompilerPipeline(errorSource, "Semantic Error Diagnostic Test");
+    runCompilerPipeline(errorSource, "Semantic Error Live AI Diagnostic Test");
 
     return 0;
 }
