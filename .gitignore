@@ -1,0 +1,18 @@
+# Build directories
+build/
+cmake-build-*/
+bin/
+obj/
+
+# Compiled outputs
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+*.out
+
+# IDE and OS specific files
+.vscode/
+.idea/
+.DS_Store
