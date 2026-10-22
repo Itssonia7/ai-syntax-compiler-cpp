@@ -1,6 +1,7 @@
 #include "Lexer.h"
 #include "Parser.h"
 #include "SemanticAnalyzer.h"
+#include "DiagnosticEngine.h"
 #include <iostream>
 #include <iomanip>
 
@@ -19,21 +20,24 @@ std::string tokenTypeToString(TokenType type) {
     }
 }
 
-int main() {
-    std::string source = "int score = 100;\nstring name = \"compiler\";";
-
+void runCompilerPipeline(const std::string& sourceCode, const std::string& testName) {
     std::cout << "========================================\n";
-    std::cout << "          COMPILER PIPELINE             \n";
+    std::cout << "  RUNNING PIPELINE: " << testName << "\n";
     std::cout << "========================================\n\n";
+
+    DiagnosticEngine diagnostics;
 
     // STAGE 1: LEXICAL ANALYSIS
     std::cout << "[STAGE 1] Lexical Analysis (Token Stream)\n";
     std::cout << "----------------------------------------\n";
-    
-    Lexer lexer(source);
+    Lexer lexer(sourceCode);
     std::vector<Token> tokens = lexer.tokenizeAll();
 
     for (const auto& tok : tokens) {
+        if (tok.type == TokenType::UNKNOWN) {
+            diagnostics.report(DiagnosticLevel::ERROR, "Lexer", tok.line, tok.column,
+                               "Unrecognized token '" + tok.value + "'", sourceCode);
+        }
         std::cout << "Line " << std::setw(2) << tok.line 
                   << ", Col " << std::setw(2) << tok.column 
                   << " | " << std::setw(15) << std::left << tokenTypeToString(tok.type)
@@ -44,33 +48,48 @@ int main() {
     // STAGE 2: PARSING & AST GENERATION
     std::cout << "[STAGE 2] Parsing & Abstract Syntax Tree (AST)\n";
     std::cout << "----------------------------------------\n";
-    
     Parser parser(tokens);
-    std::unique_ptr<ProgramNode> ast = parser.parseProgram();
-    if (ast) {
-        ast->print();
+    std::unique_ptr<ProgramNode> ast = nullptr;
+    try {
+        ast = parser.parseProgram();
+        if (ast) ast->print();
+    } catch (const std::exception& e) {
+        diagnostics.report(DiagnosticLevel::ERROR, "Parser", 1, 1, e.what(), sourceCode);
     }
     std::cout << "\n";
 
-    // STAGE 3: SEMANTIC ANALYSIS & SYMBOL TABLE
+    // STAGE 3: SEMANTIC ANALYSIS
     std::cout << "[STAGE 3] Semantic Analysis & Symbol Table\n";
     std::cout << "----------------------------------------\n";
-    
-    SemanticAnalyzer analyzer;
-    bool success = analyzer.analyze(*ast);
+    if (ast) {
+        SemanticAnalyzer analyzer;
+        analyzer.analyze(*ast);
+        analyzer.getSymbolTable().print();
 
-    std::cout << "Symbol Table:\n";
-    analyzer.getSymbolTable().print();
-
-    if (!success) {
-        std::cout << "\nSemantic Errors Encountered:\n";
         for (const auto& err : analyzer.getErrors()) {
-            std::cout << " - " << err << "\n";
+            diagnostics.report(DiagnosticLevel::ERROR, "Semantic", 1, 1, err, sourceCode);
         }
-    } else {
-        std::cout << "\nSemantic Analysis Passed: 0 Errors Found.\n";
     }
     std::cout << "\n";
+
+    // STAGE 4: DIAGNOSTICS & AI BRIDGE
+    std::cout << "[STAGE 4] Diagnostics & LLM Prompt Payload\n";
+    std::cout << "----------------------------------------\n";
+    if (diagnostics.hasErrors()) {
+        diagnostics.printDiagnostics();
+        std::cout << "--- GENERATED AI DIAGNOSTIC PROMPT ---\n";
+        std::cout << diagnostics.generateAIPrompt() << "\n";
+    } else {
+        std::cout << "No errors detected. Compiler pipeline completed successfully.\n\n";
+    }
+}
+
+int main() {
+    std::string validSource = "int score = 100;\nstring name = \"compiler\";";
+    std::string errorSource = "int score = 100;\nscore = \"invalid_type_assignment\";";
+
+    runCompilerPipeline(validSource, "Valid Source Test");
+    runCompilerPipeline(errorSource, "Semantic Error Diagnostic Test");
 
     return 0;
 }
